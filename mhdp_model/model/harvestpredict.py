@@ -1,12 +1,11 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Created on Thu Nov 23 15:00:49 2023
+Created on Mon Nov 27 12:35:04 2023
 
 @author: alexanderstudt
 """
 
-import argparse
 import rasterio
 import os
 import numpy as np
@@ -25,30 +24,15 @@ import warnings
 warnings.filterwarnings("ignore")
 
 
-parser = argparse.ArgumentParser(description='FreshSatellite Date Prediction')
-
-parser.add_argument("files_path", type=str)
-parser.add_argument("output_path", default="", type=str)
-
-
-# input_data:List[String] (List of file paths [6], where image name cointains timestamp)
-# predict(input_data, model) -> datetime
-
-# all_input_data  -> sattelite1_data and sattelite2
-
-# predict_batch(sattelite1_data)
-# predict_batch(sattelite2_data)
-
-# #Analyzes only one location images taken with one exact satellite
-# predict_batch(input_data, plannedHarvestingDate: datetime, model) -> Dict[datetime,datetime]
-
-# load_model(path) -> model
-
-
-def main():
+def predict(input_data, country, image_dir="", planned_Harvesting_Date=None):
+    
+    if country not in ["Australia", "Pakistan"]:
+        print("Please enter either Australia or Pakistan")
+        return None
+    
     print("Load Images")
-    args = parser.parse_args()
-    images_dict_dict = load_images(args.files_path)
+    images_dict_dict = load_images(input_data, image_dir)
+    print("Feature Extraction")
     images_df = calc_means_and_cloud_cleaned_version(images_dict_dict)
     combis, combis_clean = calc_various_combs_(images_df)
     
@@ -65,9 +49,8 @@ def main():
     
     print("Begin Feature Generation")
     featuresets, _ = feature_creation(reduced, relevant_channels)
-    feature_cleaned = cleaning(featuresets)
-    print(featuresets[1]["Pakistan_1_P"])
-    printn
+    feature_scaled = second_rescale(featuresets, scale_sets=featuresets)
+    feature_cleaned = cleaning(feature_scaled)
     all_same_or_nan_columns,s = column_classification(feature_cleaned[0][list(feature_cleaned[0])[0]])
     all_same = True
     for region in feature_cleaned:
@@ -82,9 +65,6 @@ def main():
         for i, region in enumerate(feature_cleaned):
             for name, df in region.items():
                 feature_cleaned[i][name] = df[[col for col in df.columns if col not in all_same_or_nan_columns]]
-        for i, region in enumerate(feature_cleaned):
-            for name, df in region.items():
-                feature_cleaned[i][name] = df[[col for col in df.columns if col not in all_same_or_nan_columns]]
     else:
         print("not all of them are the same. Check that!!!")
     
@@ -92,16 +72,18 @@ def main():
     regionsets = create_regionsets(feature_expanded)
     num_cols = [col for col in regionsets[0].columns if col!="Source_DF"]
     y_australien, y_pakistan, year_australien, year_pakistan = create_labels(regionsets)
-    
-    with open("model_australien.pkl", "rb") as file:
-        clf_australien = pickle.load(file)
-    
-    with open("model_pakistan.pkl", "rb") as file:
-        clf_pakistan = pickle.load(file)
+
        
     print("Start Prediction")
-    printn                                                                   
-    preds = clf_australien.predict(regionsets[0][num_cols])
+         
+
+    if country == "Australia":
+        with open("model_australien.pkl", "rb") as file:
+            clf = pickle.load(file)
+    elif country == "Pakistan":
+        with open("model_pakistan.pkl", "rb") as file:
+            clf = pickle.load(file)                                                            
+    preds = clf.predict(regionsets[0][num_cols])
     farms = list(regionsets[0]["Source_DF"])
     summe = timedelta(days=0)
     summe = 0
@@ -119,36 +101,27 @@ def main():
         days_difference = difference.total_seconds() / (24 * 60 * 60)
         summe += np.abs(days_difference)
         mse += days_difference**2
-    df_scatter_australien = pd.DataFrame({"True Date": true, "Predicted Date": pred, "True Year": year_australien, "Farm": farms})
+    df_scatter = pd.DataFrame({"True Date": true, "Predicted Date": pred, "True Year": year_australien, "Farm": farms})
     
-    preds = clf_pakistan.predict(regionsets[1][num_cols])
-    farms = list(regionsets[1]["Source_DF"])
-    summe = timedelta(days=0)
-    summe = 0
-    mse = 0
-    pred = []
-    true = []
-    for i in range(y_pakistan.shape[0]):
-        x = y_pakistan[i,0]
-        y = y_pakistan[i,1]
-        x_pred = preds[i,0]
-        y_pred = preds[i,1]
-        difference = inverse_y(x,y)- inverse_y(x_pred,y_pred)
-        pred.append(inverse_y(x_pred,y_pred))
-        true.append(inverse_y(x,y))
-        days_difference = difference.total_seconds() / (24 * 60 * 60)
-        summe += np.abs(days_difference)
-        mse += days_difference**2
-    df_scatter_pakistan = pd.DataFrame({"True Date": true, "Predicted Date": pred, "True Year": year_pakistan, "Farm": farms})
     
-    df_scatter_australien.to_csv(os.path.join(args.output_path, "predictions_australia.csv"))
-    df_scatter_pakistan.to_csv(os.path.join(args.output_path, "predictions_pakistan.csv"))
     print("Finished")
+    
+    
+    if planned_Harvesting_Date:
+        return create_new_dictionary_with_date_offsets(convert_dict(df_scatter), planned_Harvesting_Date)
+        
+    print("No Harvest date")
+    return convert_dict(df_scatter)
+    
+    
+    #df_scatter_australien.to_csv(os.path.join(args.output_path, "predictions_australia.csv"))
+    #df_scatter_pakistan.to_csv(os.path.join(args.output_path, "predictions_pakistan.csv"))
+    
    
         
         
 
-def load_images(image_path):
+def load_images(files, image_path):
     
     """
     Loads satellite images from the specified image directory path.
@@ -176,48 +149,41 @@ def load_images(image_path):
     are the corresponding multi-dimensional image data arrays.
     """
     
-    files = os.listdir(image_path)
+    #files = os.listdir(image_path)
     # Initialize a dictionary to hold image data for each file
     images_dict_dict = {}
     
-    # Loop through each file in the provided files list
-    for file in files:
+   
+    
+    
+    # Initialize a dictionary to hold band data for each image in the directory
+    images_dict = {}
+
+    # Loop through each path in the current image directory
+    for path in files:
         
-        # Skip files starting with a dot (commonly hidden files or directories in Unix systems)
-        if not file.startswith("."):
-            print(file)
+        # Create the full path to the current geotiff file
+        geotiff_path = os.path.join(image_path, path)
+
+        # Check if the current path is a .tif file
+        if path.endswith("tif"):
             
-            # Create the full path to the image directory
-            image_dir = os.path.join(image_path, file)
-    
-            # Initialize a dictionary to hold band data for each image in the directory
-            images_dict = {}
-    
-            # Loop through each path in the current image directory
-            for path in os.listdir(image_dir):
+            # Open the geotiff file using rasterio
+            with rasterio.open(geotiff_path) as dataset:
                 
-                # Create the full path to the current geotiff file
-                geotiff_path = os.path.join(image_dir, path)
+                # Read each band from the geotiff file and stack them together
+                for i in range(1, 17):
+                    array = dataset.read(i)
+                    if i == 1:
+                        bands = array.copy()
+                    else:
+                        bands = np.dstack((bands, array))
+                
+                # Add the stacked bands to the images dictionary with the file name as the key
+                images_dict[path] = bands
     
-                # Check if the current path is a .tif file
-                if path.endswith("tif"):
-                    
-                    # Open the geotiff file using rasterio
-                    with rasterio.open(geotiff_path) as dataset:
-                        
-                        # Read each band from the geotiff file and stack them together
-                        for i in range(1, 17):
-                            array = dataset.read(i)
-                            if i == 1:
-                                bands = array.copy()
-                            else:
-                                bands = np.dstack((bands, array))
-                        
-                        # Add the stacked bands to the images dictionary with the file name as the key
-                        images_dict[path] = bands
-            
-            # Add the images dictionary to the main dictionary with the file name as the key
-            images_dict_dict[file] = images_dict
+    # Add the images dictionary to the main dictionary with the file name as the key
+    images_dict_dict["Australien"] = images_dict
             
     return images_dict_dict
 
@@ -255,7 +221,7 @@ def calc_means_and_cloud_cleaned_version(images_dict_dict):
     
     # Iterate over each key-value pair in images_dict_dict
     for kidd, vidd in images_dict_dict.items():
-        print(kidd)
+        
     
         # Sort the dictionary based on the custom sort_key function
         images_dict_sorted = dict(sorted(vidd.items(), key=lambda item: sort_key(item[0])))
@@ -424,7 +390,7 @@ def feature_creation(sets, relevant_channels):
     
     for i,region in enumerate(sets):
         for name, df in region.items():
-            print(name)
+            #print(name)
             try:
                 fdf = fc.calculate(data=df[df["Clouds"] == 0], approve_sparsity=True, return_df=True)
                 featuresets[i][name] = fdf
@@ -432,6 +398,24 @@ def feature_creation(sets, relevant_channels):
                 sciped.append(name)
                 
     return featuresets, sciped
+
+def second_rescale(sets, scale_sets=None, scale_value=None):
+    
+    if not scale_sets and not scale_value:
+        print("choose at least one")
+        return None
+    if scale_sets and scale_value:
+        print("Do not choose both")
+        return None
+    
+    featuresets_scaled = [{} for _ in range(3)]
+    
+    for i, region in enumerate(sets):
+        for name, df in region.items():
+            featuresets_scaled[i][name] = df.copy()
+            for channel in df.columns:
+                featuresets_scaled[i][name][channel] = featuresets_scaled[i][name][channel] / scale_sets[i][name][channel].max()
+    return featuresets_scaled
 
 def cleaning(sets):
     
@@ -442,7 +426,7 @@ def cleaning(sets):
     for j, region in enumerate(sets):
         if j < 2:
             for name, df in region.items():
-                print(name, df.shape)
+                #print(name, df.shape)
                 if name not in dropframe:
                     featuresets_cleaned[j][name] = df.drop(dropcols, axis=1)
     return featuresets_cleaned
@@ -464,7 +448,7 @@ def column_classification(df):
 def modify_features(sets):
     feature_expanded = [{}, {}]
     for j, region in enumerate(sets):
-        print(j)
+        #print(j)
         for name, df in region.items():
             df_expanded = pd.DataFrame(index=df.index)
             for col in df.columns:
@@ -481,7 +465,7 @@ def modify_features(sets):
 
 def create_regionsets(sets):
     regionsets = []
-    cols = sets[0]["Australien_1_L"].columns
+    cols = sets[0][list(sets[0])[0]].columns
     for i, region in enumerate(sets):
         df_stack = pd.DataFrame(columns = cols)
         counter = 0
@@ -587,9 +571,65 @@ def create_labels(regionsets):
                  
     return y_australien, y_pakistan, year_australien, year_pakistan
 
+def convert_dict(df_scatter):
+    
+    date_harvest = {}
+    for index, row in df_scatter.iterrows():
+        
+        key = row["True Date"].strftime('%m-%d')
+        key = str(row["True Year"]) + "-" + key
+        
+        date_harvest[key] = days_difference_ignoring_year(row["True Date"], row["Predicted Date"])
+        if index < 10:
+            print(row["True Date"], row["Predicted Date"])
+            print(key, date_harvest[key])
+    return date_harvest
+    
 
+def days_difference_ignoring_year(timestamp1, timestamp2):
+    """
+    Calculate the difference in days between two dates, ignoring the year.
+    The sign indicates which date is ahead. A negative value means timestamp1 is ahead of timestamp2.
+    """
+    # Extract month and day from each timestamp
+    month_day1 = timestamp1.strftime('%m-%d')
+    month_day2 = timestamp2.strftime('%m-%d')
 
+    # Convert month and day into datetime objects with a fixed year (e.g., 2000)
+    fixed_year = 2000
+    date1 = datetime.strptime(f'{fixed_year}-{month_day1}', '%Y-%m-%d')
+    date2 = datetime.strptime(f'{fixed_year}-{month_day2}', '%Y-%m-%d')
 
+    # Calculate the difference in days
+    day_difference = (date1 - date2).days
 
-if __name__=="__main__":
-    main()
+    # Adjust the difference if it is larger than half a year, considering the shortest path around the calendar
+    if day_difference > 182:  # More than half a year ahead
+        day_difference -= 365
+    elif day_difference < -182:  # More than half a year behind
+        day_difference += 365
+
+    return -day_difference
+
+def create_new_dictionary_with_date_offsets(original_dict, harvest_date):
+    """
+    Generate a new dictionary with the same keys as the original dictionary,
+    but the values are the given date plus the value of the original dictionary corresponding to the key.
+    """
+    new_dict = {}
+
+    # Convert the specific date to a datetime object
+    specific_date_obj = datetime.strptime(harvest_date, '%Y-%m-%d')
+
+    for key, value in original_dict.items():
+        # Add the integer value (days) to the specific date
+        new_date = specific_date_obj + timedelta(days=value)
+
+        # Format the new date back to string and assign to the new dictionary
+        new_dict[key] = new_date.strftime('%Y-%m-%d')
+
+    return new_dict
+
+'''if __name__=="__main__":
+    input_data = os.listdir(os.path.join("Images", "Pakistan_1"))
+    print(predict(input_data, "Pakistan", image_dir=os.path.join("Images", "Pakistan_1"), planned_Harvesting_Date="2016-05-30"))'''
