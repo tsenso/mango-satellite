@@ -1,0 +1,43 @@
+/* Create your proto file or upload a proto file and edit with this editor.
+Select the languages you want your file to compile and compile. */
+
+/* Product Service Example */
+
+syntax = "proto3";
+
+import "google/protobuf/timestamp.proto";
+
+// Define the service
+service Predict {
+    rpc PredictMangoHarvestingDateForYear(FeaturesForExactYear) returns (Prediction);
+    rpc PredictMangoHarvestingDates(Features) returns (Predictions);
+}
+
+// Shared types
+message SatelliteImage {
+    google.protobuf.Timestamp created_at = 1;
+    bytes tiff_image = 2;
+}
+
+// Define a message to hold the features input by the client
+message FeaturesForExactYear {
+    repeated SatelliteImage satellite_images = 1;
+    int32 year_to_analyze = 2;
+}
+
+message Features {
+    repeated SatelliteImage satellite_images = 1;
+}
+
+// Define a message to hold the predicted harvesting date
+message Prediction {
+    int32 predicted_harvesting_year = 1;
+    bool success = 2;
+    int32 predicted_harvesting_date_offset = 3;
+    optional google.protobuf.Timestamp predicted_harvesting_date = 4;
+    optional string description = 5;
+}
+
+message Predictions {
+    repeated Prediction predictions = 1;
+}
