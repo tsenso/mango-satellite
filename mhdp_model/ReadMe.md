@@ -12,10 +12,14 @@ python -m grpc_tools.protoc -I. --python_out=generated --pyi_out=generated --grp
 
 ### How to build
 ```bash
-docker build -t mhdp_client:latest .
+docker build -t mhdp_model:latest .
 ```
 
 ### How to run
 ```bash
-docker run -it --rm --expose 8061 mhdp_client:latest
+docker run -it --rm --expose 8061 mhdp_model:latest
 ```
+
+## aiexp.ai4europe.eu
+### Model name
+`mango-harvesting-date-prediction-with-satellite-photos`

@@ -1,0 +1,54 @@
+/* Create your proto file or upload a proto file and edit with this editor.
+Select the languages you want your file to compile and compile. */
+
+/* Product Service Example */
+
+syntax = "proto3";
+
+message Timestamp {
+  // Represents seconds of UTC time since Unix epoch
+  // 1970-01-01T00:00:00Z. Must be from 0001-01-01T00:00:00Z to
+  // 9999-12-31T23:59:59Z inclusive.
+  int64 seconds = 1;
+
+  // Non-negative fractions of a second at nanosecond resolution. Negative
+  // second values with fractions must still have non-negative nanos values
+  // that count forward in time. Must be from 0 to 999,999,999
+  // inclusive.
+  int32 nanos = 2;
+}
+
+// Define the service
+service Predict {
+    rpc PredictMangoHarvestingDateForYear(FeaturesForExactYear) returns (Prediction);
+    rpc PredictMangoHarvestingDates(Features) returns (Predictions);
+}
+
+// Shared types
+message SatelliteImage {
+    Timestamp created_at = 1;
+    bytes tiff_image = 2;
+}
+
+// Define a message to hold the features input by the client
+message FeaturesForExactYear {
+    repeated SatelliteImage satellite_images = 1;
+    int32 year_to_analyze = 2;
+}
+
+message Features {
+    repeated SatelliteImage satellite_images = 1;
+}
+
+// Define a message to hold the predicted harvesting date
+message Prediction {
+    int32 predicted_harvesting_year = 1;
+    bool success = 2;
+    int32 predicted_harvesting_date_offset = 3;
+    optional Timestamp predicted_harvesting_date = 4;
+    optional string description = 5;
+}
+
+message Predictions {
+    repeated Prediction predictions = 1;
+}
