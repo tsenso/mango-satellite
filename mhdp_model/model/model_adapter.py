@@ -3,7 +3,9 @@ import os
 from datetime import datetime
 from typing import List, Dict
 
+from model.dto.geo_image import GeoImage
 from model.harvest_predict import predict_real
+from model.dto.mango_harvesting_prediction import MangoHarvestingPrediction
 
 
 def cleanup_dir(path: str):
@@ -22,33 +24,12 @@ def verify_dir_created(path: str):
         os.makedirs(path)
 
 
-class Image:
-    created_at: datetime
-    data: bytes
-
-    def __init__(self, created_at, data):
-        self.created_at = created_at
-        self.data = data
-
-    def _created_at_to_filename(self, extension: str = "tif", use_dummy_aaa_suffix: bool = True):
-        timestamp_str = self.created_at.strftime("%Y%m%dT%H%M%S")
-        suffix = "RVN" if use_dummy_aaa_suffix else ""
-        return f"{timestamp_str}_{suffix}.{extension}"
-
-    def store(self, path: str = "") -> str:
-        filename = os.path.join(path, self._created_at_to_filename())
-        with open(filename, 'wb') as f:
-            f.write(self.data)
-
-        return filename
-
-
 def get_exact_date_of_border_time_for_year(year: int):
     # ToDo: This date will be hardcoded for now
     return datetime(year, 8, 1)
 
 
-def images_separator_by_harvesting_year(images: List[Image]) -> Dict[int, List[Image]]:
+def images_separator_by_harvesting_year(images: List[GeoImage]) -> Dict[int, List[GeoImage]]:
     if not images or len(images) == 0:
         return {}
 
@@ -71,7 +52,7 @@ def images_separator_by_harvesting_year(images: List[Image]) -> Dict[int, List[I
     return images_by_harvesting_year
 
 
-def __predict_wrapper(images: List[Image]) -> (int, int):
+def __predict_wrapper(images: List[GeoImage]) -> (int, int):
     path = ".temp"
     verify_dir_created(path)
     cleanup_dir(path)
@@ -85,12 +66,13 @@ def __predict_wrapper(images: List[Image]) -> (int, int):
             raise ValueError("Got empty prediction from model!")
 
         last_date = list(results)[-1]
-        return datetime.strptime(last_date,"%Y-%m-%d").year, results[last_date]
+        return datetime.strptime(last_date, "%Y-%m-%d").year, results[last_date]
     except Exception as e:
         raise ValueError("There is no enough data for prediction! Unable to predict!")
 
 
-def predict_for_images_list(images: List[Image], planned_harvesting_year: int = -1) -> Dict[int, int]:
+def predict_for_images_list(images: List[GeoImage], planned_harvesting_year: int = -1) -> Dict[
+    int, MangoHarvestingPrediction]:
     if len(images) == 0:
         raise ValueError("There are no any image! Unable to predict!")
 
@@ -101,19 +83,35 @@ def predict_for_images_list(images: List[Image], planned_harvesting_year: int = 
     if planned_harvesting_year != -1:
         # We will predict only one year
         if planned_harvesting_year not in images_by_harvesting_year:
-            raise ValueError(f"There are no images for {planned_harvesting_year} year! Unable to predict!")
+            message = f"There are no images for {planned_harvesting_year} year! Unable to predict!"
+            logging.warning(message)
+            prediction_results[planned_harvesting_year] = MangoHarvestingPrediction(planned_harvesting_year,
+                                                                                    description=message)
 
-        harvesting_year, offset = __predict_wrapper(images_by_harvesting_year[planned_harvesting_year])
-        prediction_results[harvesting_year] = offset
+        try:
+            last_image_year_used_for_prediction, offset = __predict_wrapper(
+                images_by_harvesting_year[planned_harvesting_year])
+            prediction_results[planned_harvesting_year] = MangoHarvestingPrediction(planned_harvesting_year,
+                                                                                    success=True,
+                                                                                    predicted_harvesting_date_offset=offset)
+        except ValueError as e:
+            message = f"Unable to predict {planned_harvesting_year} harvesting year"
+            logging.warning(message)
+            prediction_results[planned_harvesting_year] = MangoHarvestingPrediction(planned_harvesting_year,
+                                                                                    description=message)
     else:
         # We will predict as much as possible years
         for harvesting_year, images_for_year in images_by_harvesting_year.items():
             if not images_for_year or len(images_for_year) == 0:
                 continue
             try:
-                harvesting_year, offset = __predict_wrapper(images_for_year)
-                prediction_results[harvesting_year] = offset
+                last_image_year_used_for_prediction, offset = __predict_wrapper(images_for_year)
+                prediction_results[harvesting_year] = MangoHarvestingPrediction(harvesting_year, success=True,
+                                                                                predicted_harvesting_date_offset=offset)
             except ValueError as e:
-                logging.warning(f"Unable to predict {harvesting_year} harvesting year")
+                message = f"Unable to predict {harvesting_year} harvesting year"
+                logging.warning(message)
+                prediction_results[harvesting_year] = MangoHarvestingPrediction(harvesting_year,
+                                                                                description=message)
 
     return prediction_results

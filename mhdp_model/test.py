@@ -2,7 +2,8 @@ import logging
 import os
 from datetime import datetime
 
-from model.model_adapter import predict_for_images_list, Image, __predict_wrapper
+from model.model_adapter import predict_for_images_list
+from model.dto.geo_image import GeoImage
 
 logging.basicConfig(level=logging.DEBUG)
 
@@ -21,11 +22,11 @@ def main():
         created_at = datetime.strptime(image_filename.split("_")[0], "%Y%m%dT%H%M%S")
         with open(filename, "rb") as f:
             image_bytes = f.read()
-            images.append(Image(created_at, image_bytes))
+            images.append(GeoImage(created_at, image_bytes))
 
     print(f"Total images loaded: {len(images)}")
-    results = __predict_wrapper(images)
-    # results = predict_for_images_list(images)
+    # results = __predict_wrapper(images)
+    results = predict_for_images_list(images)
     print(results)
 
 
