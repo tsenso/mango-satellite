@@ -1,0 +1,34 @@
+# Project specific
+.temp
+assets/**
+
+# git repository related
+.git
+.gitignore
+.gitattributes
+.gitlint
+
+# IDE related
+.idea
+.pylintrc
+Makefile
+
+# Docker related
+Dockerfile
+.dockerignore
+docker-compose.yaml
+.devcontainer
+
+# Python project related
+.env*
+__pycache__/
+
+# Other
+*.md
+
+# debugging tools and utils
+debug/
+.pytest_cache/
+
+# Data for S3 Minio server
+s3-data/
