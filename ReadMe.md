@@ -1,4 +1,5 @@
 # Mango harvesting date prediction model
+![](Logo.jpg)
 
 ## Introduction 
 Choosing the wrong harvesting time has serious consequences on product quality and shelf-life. Ehe EU4AI sub-granted project 008 – FreshSatellites has developed an AI based decision support module for mango farmers and wholesalers to choose the optimum date for harvesting mangos.
