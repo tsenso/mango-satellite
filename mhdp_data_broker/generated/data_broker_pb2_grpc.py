@@ -2,7 +2,7 @@
 """Client and server classes corresponding to protobuf-defined services."""
 import grpc
 
-import data_broker_pb2 as data__broker__pb2
+import generated.data_broker_pb2 as data__broker__pb2
 
 
 class DataBrokerStub(object):

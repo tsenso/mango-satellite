@@ -17,7 +17,7 @@ docker build -t mhdp_model:latest .
 
 ### How to run
 ```bash
-docker run -it --rm --expose 8061 mhdp_model:latest
+docker run -it --rm -p 8061:8061 mhdp_model:latest
 ```
 
 ## aiexp.ai4europe.eu

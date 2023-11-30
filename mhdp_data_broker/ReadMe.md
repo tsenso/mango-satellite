@@ -17,5 +17,5 @@ docker build -t mhdp_data_broker:latest .
 
 ### How to run
 ```bash
-docker run -it --rm --expose 8061 mhdp_data_broker:latest
+docker run -it --rm -p 8061:8061 mhdp_data_broker:latest
 ```

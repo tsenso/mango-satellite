@@ -32,8 +32,9 @@ def load_images(path: str, filter_suffix: str = "") -> List[SatelliteImage]:
         satellite_image = SatelliteImage()
         satellite_image.created_at.FromDatetime(created_at)
         with open(image_filename_with_path, "rb") as f:
-            image_bytes = f.read()
-            images.append(SatelliteImage(created_at, image_bytes))
+            satellite_image.tiff_image = f.read()
+
+        images.append(satellite_image)
 
     return images
 

@@ -11,6 +11,7 @@ from generated import model_pb2_grpc, model_pb2
 from model.dto.geo_image import GeoImage
 
 port = 8061
+max_msg_length = 1024 * 1024 * 200
 
 
 def load_images(path: str, filter_suffix: str = "") -> List[GeoImage]:
@@ -41,7 +42,6 @@ def predict_images():
     logging.info("predict_images ...")
     start_ch = timer()
 
-    max_msg_length = 1024 * 1024 * 200
     with grpc.insecure_channel('localhost:{}'.format(port),
                                options=[('grpc.max_message_length', max_msg_length),
                                         ('grpc.max_send_message_length', max_msg_length),
@@ -66,7 +66,10 @@ def predict_2018_year():
     logging.info("predict_2018_year ...")
     start_ch = timer()
 
-    with grpc.insecure_channel('localhost:{}'.format(port)) as channel:
+    with grpc.insecure_channel('localhost:{}'.format(port),
+                               options=[('grpc.max_message_length', max_msg_length),
+                                        ('grpc.max_send_message_length', max_msg_length),
+                                        ('grpc.max_receive_message_length', max_msg_length)]) as channel:
         stub = model_pb2_grpc.PredictStub(channel)
         request = model_pb2.FeaturesForExactYear(year_to_analyze=2018)
         for image in load_images("../mhdp_data_broker/assets/Pakistan_test/2018_n"):
@@ -88,7 +91,10 @@ def predict_2018_year_from_many_images():
     logging.info("predict_2018_year_from_many_images ...")
     start_ch = timer()
 
-    with grpc.insecure_channel('localhost:{}'.format(port)) as channel:
+    with grpc.insecure_channel('localhost:{}'.format(port),
+                               options=[('grpc.max_message_length', max_msg_length),
+                                        ('grpc.max_send_message_length', max_msg_length),
+                                        ('grpc.max_receive_message_length', max_msg_length)]) as channel:
         stub = model_pb2_grpc.PredictStub(channel)
         request = model_pb2.FeaturesForExactYear(year_to_analyze=2018)
         for image in load_images("../mhdp_data_broker/assets/Pakistan_test/all", "N.tif"):
