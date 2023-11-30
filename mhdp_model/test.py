@@ -10,7 +10,7 @@ logging.basicConfig(level=logging.DEBUG)
 
 # /c/Program\ Files\ \(x86\)/GnuWin32/bin/tiffinfo.exe 20170802T055639_AAA.tif
 def main():
-    assets_path = "assets/Pakistan_test/all"
+    assets_path = "../mhdp_data_broker/assets/Pakistan_test/all"
     all_images_filenames = os.listdir(assets_path)
     # images_filenames = all_images_filenames
     images_filenames = list(filter(lambda image_filename: image_filename.endswith("RVN.tif"), all_images_filenames))

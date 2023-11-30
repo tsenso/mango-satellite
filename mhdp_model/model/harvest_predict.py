@@ -31,7 +31,7 @@ def setup_prediction_loggers():
     logging.getLogger("rasterio._filepath").setLevel(logging.ERROR)
 
 def predict_test():
-    all_images_filenames = os.listdir("../assets/Pakistan_test/all")
+    all_images_filenames = os.listdir("../mhdp_data_broker/assets/Pakistan_test/all")
     # input_data = list(filter(lambda image_filename: image_filename.endswith("RVN.tif"), all_images_filenames))
     input_data = all_images_filenames
     print(f"Total images: {len(input_data)}")

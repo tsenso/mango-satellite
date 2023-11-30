@@ -1,6 +1,5 @@
 # Project specific
 .temp
-assets/**
 
 # git repository related
 .git

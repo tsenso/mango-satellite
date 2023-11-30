@@ -24,7 +24,12 @@ def load_images(path: str, filter_suffix: str = "") -> List[GeoImage]:
 
     for image_filename in images_filenames:
         image_filename_with_path = os.path.join(path, image_filename)
-        created_at = datetime.strptime(image_filename.split("_")[0], "%Y%m%dT%H%M%S")
+
+        try:
+            created_at = datetime.strptime(image_filename.split("_")[0], "%Y%m%dT%H%M%S")
+        except Exception as e:
+            continue
+
         with open(image_filename_with_path, "rb") as f:
             image_bytes = f.read()
             images.append(GeoImage(created_at, image_bytes))
@@ -43,7 +48,7 @@ def predict_images():
                                         ('grpc.max_receive_message_length', max_msg_length)]) as channel:
         stub = model_pb2_grpc.PredictStub(channel)
         request = model_pb2.Features()
-        for image in load_images("assets/Pakistan_test/all", "N.tif"):
+        for image in load_images("../assets/Pakistan_test/all", "N.tif"):
             request.satellite_images.append(image.map_to_grpc_model())
         logging.info("Calling MHDP_Stub.PredictMangoHarvestingDates ...")
         response = stub.PredictMangoHarvestingDates(request)
@@ -64,7 +69,7 @@ def predict_2018_year():
     with grpc.insecure_channel('localhost:{}'.format(port)) as channel:
         stub = model_pb2_grpc.PredictStub(channel)
         request = model_pb2.FeaturesForExactYear(year_to_analyze=2018)
-        for image in load_images("assets/Pakistan_test/2018_n"):
+        for image in load_images("../mhdp_data_broker/assets/Pakistan_test/2018_n"):
             request.satellite_images.append(image.map_to_grpc_model())
 
         logging.info("Calling MHDP_Stub.PredictMangoHarvestingDateForYear ...")
@@ -86,7 +91,7 @@ def predict_2018_year_from_many_images():
     with grpc.insecure_channel('localhost:{}'.format(port)) as channel:
         stub = model_pb2_grpc.PredictStub(channel)
         request = model_pb2.FeaturesForExactYear(year_to_analyze=2018)
-        for image in load_images("assets/Pakistan_test/all", "N.tif"):
+        for image in load_images("../mhdp_data_broker/assets/Pakistan_test/all", "N.tif"):
             request.satellite_images.append(image.map_to_grpc_model())
 
         logging.info("Calling MHDP_Stub.PredictMangoHarvestingDateForYear ...")
@@ -104,6 +109,6 @@ def predict_2018_year_from_many_images():
 if __name__ == '__main__':
     logging.basicConfig(level=logging.DEBUG)
 
-    # predict_images()
+    predict_images()
     predict_2018_year()
     predict_2018_year_from_many_images()
