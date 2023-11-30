@@ -1,0 +1,32 @@
+/* Create your proto file or upload a proto file and edit with this editor.
+Select the languages you want your file to compile and compile. */
+
+/* Product Service Example */
+
+syntax = "proto3";
+
+import "google/protobuf/timestamp.proto";
+
+message Empty {
+}
+
+// Define the service
+service DataBroker {
+    rpc GetDataForExactYearPrediction(Empty) returns (FeaturesForExactYear);
+    rpc GetDataForPrediction(Empty) returns (Features);
+}
+
+// Shared types
+message SatelliteImage {
+    google.protobuf.Timestamp created_at = 1;
+    bytes tiff_image = 2;
+}
+
+message FeaturesForExactYear {
+    repeated SatelliteImage satellite_images = 1;
+    int32 year_to_analyze = 2;
+}
+
+message Features {
+    repeated SatelliteImage satellite_images = 1;
+}

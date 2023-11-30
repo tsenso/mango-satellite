@@ -1,0 +1,17 @@
+name: new_gee_python_data_broker
+channels:
+  - conda-forge
+  - bioconda
+  - defaults
+dependencies:
+  - ca-certificates=2023.05.30
+  - libffi=3.4.4
+  - openssl=3.0.9
+  - pip=23.1.2
+  - python=3.9.16
+  - setuptools=67.8.0
+  - wheel=0.38.4
+  - pip:
+      - grpcio==1.60.0rc1
+      - grpcio-tools==1.60.0rc1
+      - protobuf==4.25.1
