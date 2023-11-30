@@ -19,3 +19,7 @@ docker build -t mhdp_data_broker:latest .
 ```bash
 docker run -it --rm -p 8061:8061 mhdp_data_broker:latest
 ```
+
+## aiexp.ai4europe.eu
+### Model name
+`mango-harvesting-date-prediction-with-satellite-photos-data-broker`
